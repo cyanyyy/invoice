@@ -123,8 +123,19 @@ td.tiny{color:#9aa3b2;font-size:12px;max-width:320px;overflow:hidden;text-overfl
     <input list="sublist" id="bulk" placeholder="批量设科目…" style="padding:6px 10px;border:1px solid #d8dee8;border-radius:7px;width:150px;font-size:13px">
     <button onclick="bulkSet()">应用到选中行</button>
     <button onclick="dedup()">按发票号去重</button>
+    <button onclick="toggleManual()">＋ 手动补一行</button>
     <button onclick="delSel()">移除选中</button>
     <span class="hint" style="margin-left:auto">科目格可直接改，也可选自定义</span>
+  </div>
+  <div class="tools" id="madd" style="display:none;background:#f7f9fe;border:1px dashed #cfd9ea;border-radius:8px;flex-wrap:wrap">
+    <input id="m_date" placeholder="开票日期 2026-11-12" style="padding:6px 10px;border:1px solid #d8dee8;border-radius:7px;width:158px;font-size:13px">
+    <input id="m_no" placeholder="发票号码" style="padding:6px 10px;border:1px solid #d8dee8;border-radius:7px;width:158px;font-size:13px">
+    <input id="m_sub" list="sublist" placeholder="科目" style="padding:6px 10px;border:1px solid #d8dee8;border-radius:7px;width:130px;font-size:13px">
+    <input id="m_total" placeholder="价税合计" style="padding:6px 10px;border:1px solid #d8dee8;border-radius:7px;width:100px;font-size:13px">
+    <input id="m_rows" placeholder="条数" style="padding:6px 10px;border:1px solid #d8dee8;border-radius:7px;width:64px;font-size:13px">
+    <input id="m_name" placeholder="项目名称" style="padding:6px 10px;border:1px solid #d8dee8;border-radius:7px;width:210px;font-size:13px">
+    <button onclick="addManual()">加入清单</button>
+    <span class="hint">没读出来的发票（比如税局代开票）在这里补一行，金额照样算进汇总</span>
   </div>
   <div class="scroll">
     <table>
@@ -183,7 +194,7 @@ td.tiny{color:#9aa3b2;font-size:12px;max-width:320px;overflow:hidden;text-overfl
     <div class="fld"><label>填表日期</label><input id="date" type="date"></div>
     <div class="fld"><label>经手人</label><input id="handler"></div>
     <div class="fld"><label>领款人</label><input id="receiver"></div>
-    <div class="fld"><label>用途前缀</label><input id="prefix" value=""></div>
+    <div class="fld"><label>用途前缀</label><input id="prefix" value="支付"></div>
     <div class="fld"><label>原借款（元）</label><input id="borrow" placeholder="没有就留空"></div>
     <div class="fld"><label>应退余款（元）</label><input id="refund" placeholder="没有就留空"></div>
     <div class="fld"><label>单据及附件共（页）</label><input id="pages" placeholder="自动"></div>
@@ -232,16 +243,20 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
 
 /* ---------- 科目字典（同目录 科目字典.json 优先） ---------- */
 const DEFAULT_DICT = {
-  '业务招待费': ['餐费', '酒', '餐饮', '月饼'],
-  '小车费': ['修理', '维修', '汽油', '汽车租赁', '通行'],
+  '业务招待费': ['餐费', '餐饮'],
+  '业务招待费其他': ['酒', '月饼'],
+  '小车费': ['修理', '通行'],
+  '维修费': ['维修'],
+  '租车费': ['汽车租赁'],
+  '汽油费': ['汽油'],
   '差旅费': ['航空', '机票', '高铁', '住宿'],
   '交通费': ['客运'],
-  '办公费': ['软饮料', '收派', '物流', '清洁'],
+  '办公费': ['软饮料', '收派', '物流', '清洁', '保洁'],
   '福利费': ['饼干', '水果'],
   '投资者教育经费': ['会议', '讲师'],
   '教育经费': ['培训费'],
   '水电物业费': ['水', '电', '物业', '空调'],
-  '房租': ['不动产', '房租'],
+  '房租': ['不动产', '房租', '出租住房'],
   '网络通讯及电话费': ['通信设备', '增值电信服务', '基础电信服务', '信息技术服务'],
   '银行手续费': ['直接收费金融服务', '手续费'],
   '保险费': ['保险'],
@@ -341,12 +356,14 @@ function buildSpans(tc, pageH){
   return { spans, rows, text: rows.map(r => r.cells.map(c => c.text.trim()).join('')).join('\n') };
 }
 
+const NAME_HEADERS = ['项目名称', '货物或应税劳务、服务名称'];
+
 function findHeader(spans, rows){
   let hName = null, hSpec = null, hAmount = null, hRate = null;
   for (const row of rows){
     for (const c of row.cells){
       const t = norm(c.text);
-      if (!hName && t === '项目名称') hName = c;
+      if (!hName && NAME_HEADERS.indexOf(t) >= 0) hName = c;
       else if (!hSpec && t === '规格型号') hSpec = c;
       else if (!hAmount && (t === '金额' || t === '金额(元)')) hAmount = c;
       else if (!hRate && t.indexOf('税率') === 0) hRate = c;
@@ -362,6 +379,21 @@ function findHeader(spans, rows){
     }
   }
   return { hName, hSpec, hAmount, hRate, endY };
+}
+
+/* 老式电子票：发票代码 12 位 + 发票号码 8 位，号码不是 20 位，正则抓不到。
+   取「发票号码」标签右边、同一水平线上最近的那串数字。 */
+function findNoByLabel(spans){
+  const lab = spans.filter(s => s.text.indexOf('发票号码') >= 0)[0];
+  if (!lab) return '';
+  let best = null;
+  for (const s of spans){
+    if (s.x0 <= lab.x0 + 2) continue;
+    if (Math.abs(s.base - lab.base) > 12) continue;
+    if (!/^(\d{8}|\d{20})$/.test(s.text.trim())) continue;
+    if (best === null || s.x0 < best[0]) best = [s.x0, s.text.trim()];
+  }
+  return best ? best[1] : '';
 }
 
 function dedupName(s){
@@ -389,6 +421,7 @@ async function parseInvoice(file){
   let total = null;
   const moneyPool = [];
   let specX = null, bodyTop = null, bodyBottom = null;
+  let noLabel = '';
 
   for (let p = 1; p <= doc.numPages; p++){
     const page = await doc.getPage(p);
@@ -397,6 +430,7 @@ async function parseInvoice(file){
     const built = buildSpans(tc, pageH);
     const spans = built.spans;
     flat += built.text + '\n';
+    if (!noLabel) noLabel = findNoByLabel(spans);
 
     const h = findHeader(spans, built.rows);
     if (h.hName){
@@ -467,6 +501,7 @@ async function parseInvoice(file){
   let no = '', date = '';
   const m20 = flat.match(/(?<!\d)(\d{20})(?!\d)/);
   if (m20) no = m20[1];
+  if (!no) no = noLabel;
   const md = flat.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
   if (md) date = md[1] + '-' + String(+md[2]).padStart(2, '0') + '-' + String(+md[3]).padStart(2, '0');
 
@@ -731,6 +766,7 @@ async function mergeAll(reportBytes, records, attachFiles){
   (await out.copyPages(rep, rep.getPageIndices())).forEach(p => out.addPage(p));
 
   for (const r of records){
+    if (!r.file) continue;                 // 手动补的行没有 PDF，跳过
     const buf = await r.file.arrayBuffer();
     const d = await PDFLib.PDFDocument.load(buf);
     (await out.copyPages(d, d.getPageIndices())).forEach(p => out.addPage(p));
@@ -930,13 +966,14 @@ async function upload(files){
   const old = drop.innerHTML;
   drop.innerHTML = '正在解析 ' + pdfs.length + ' 个文件…';
   showBad('');
-  const bad = [];
+  const bad = [], warn = [];
   for (const f of pdfs){
     try {
       const r = await parseInvoice(f);
-      if (!r.no && r.total === '') { bad.push(f.name + '（没读到发票内容）'); continue; }
+      if (!r.no && r.total === '' && !r.date) { bad.push(f.name + '（文字读不出来，请用「手动补一行」）'); continue; }
       if (RECORDS.some(x => x.no === r.no && r.no)) { bad.push(f.name + '（重复，已有同号）'); continue; }
       RECORDS.push(r);
+      if (!r.no || !r.date) warn.push(f.name + '（号码或日期没读到，可在清单里补）');
     } catch (e){
       bad.push(f.name + '（' + e.message + '）');
     }
@@ -945,6 +982,8 @@ async function upload(files){
   render();
   if (bad.length){
     showBad('以下 ' + bad.length + ' 个没读进去：' + bad.join('；'));
+  } else if (warn.length){
+    showBad('提醒：' + warn.join('；'));
   }
 }
 
@@ -967,6 +1006,38 @@ function render(){
 }
 
 function onSub(i, v){ RECORDS[i].subject = v; refreshSum(); }
+
+/* ---------- 手动补一行（没识别出来的发票） ---------- */
+function toggleManual(){
+  const d = $('madd');
+  const show = d.style.display === 'none';
+  d.style.display = show ? 'flex' : 'none';
+  if (show) $('m_date').focus();
+}
+
+function addManual(){
+  const g = id => $(id).value.trim();
+  const raw = g('m_total').replace(/[¥￥,，\s]/g, '');
+  let total = '';
+  if (raw){
+    if (!/^-?\d+(\.\d+)?$/.test(raw)){ alert('价税合计要填数字，比如 600 或 600.00'); return; }
+    total = Math.round(parseFloat(raw) * 100) / 100;
+  }
+  let rows = parseInt(g('m_rows'), 10);
+  if (!isFinite(rows) || rows < 0) rows = 0;
+
+  let date = g('m_date');
+  const md = date.match(/^(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (md) date = md[1] + '-' + String(+md[2]).padStart(2, '0') + '-' + String(+md[3]).padStart(2, '0');
+
+  RECORDS.push({
+    date, no: g('m_no'), subject: g('m_sub'), total, rows,
+    name: '（手工填写）', name2: g('m_name'), pages: 0, file: null,
+  });
+  ['m_date', 'm_no', 'm_sub', 'm_total', 'm_rows', 'm_name'].forEach(id => { $(id).value = ''; });
+  render();
+  $('m_date').value = new Date().toISOString().slice(0, 10);
+}
 
 /* 按科目归集：顺序与生成的报销单明细一致（字典顺序，未分类排最后） */
 function subjectSum(){
@@ -1172,7 +1243,7 @@ async function gen(){
     }
 
     let autoPages = reportPages;
-    rows.forEach(r => { autoPages += r.pages || 1; });
+    rows.forEach(r => { autoPages += (r.pages == null ? 1 : r.pages); });
     for (const a of ATTACH){
       if (/\.pdf$/i.test(a.name)){
         try {
