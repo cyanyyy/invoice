@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>发票报销 · 费用报销单生成</title>
+<link rel="icon" href="data:,">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#1f2937;
+ font:14px/1.6 -apple-system,"Microsoft YaHei UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 24px 60px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+h1{font-size:20px;margin:0;font-weight:600}
+h1 small{font-weight:400;color:#8a93a0;font-size:12.5px;margin-left:10px}
+.priv{color:#8a93a0;font-size:12px}
+.card{background:#fff;border-radius:12px;padding:16px 18px;margin-bottom:14px;
+ box-shadow:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04)}
+.card h2{font-size:14px;margin:0 0 12px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h2 .n{display:inline-flex;width:20px;height:20px;border-radius:50%;background:#2f6bff;color:#fff;
+ font-size:12px;align-items:center;justify-content:center;font-weight:600}
+.drop{border:1.5px dashed #cdd6e4;border-radius:10px;padding:26px;text-align:center;color:#8a93a0;
+ background:#fafcff;cursor:pointer;transition:.15s}
+.drop:hover,.drop.over{border-color:#2f6bff;background:#f0f5ff;color:#2f6bff}
+.drop b{color:#2f6bff;font-weight:600}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 8px}
+button,.btn{padding:6px 13px;border:1px solid #d8dee8;background:#fff;border-radius:7px;cursor:pointer;
+ font-size:13px;color:#374151}
+button:hover,.btn:hover{border-color:#2f6bff;color:#2f6bff}
+button.primary{background:#2f6bff;border-color:#2f6bff;color:#fff;padding:9px 26px;font-size:14px}
+button.primary:hover{background:#1f56e0;color:#fff}
+button.primary:disabled{background:#b9c8e8;border-color:#b9c8e8;cursor:not-allowed}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;text-align:left;border-bottom:1px solid #eef1f6}
+th{background:#f7f9fc;font-weight:600;color:#5a6577;font-size:12.5px;position:sticky;top:0;z-index:2}
+tbody tr:hover{background:#fafcff}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+td input.sub{width:100%;border:1px solid transparent;background:transparent;padding:4px 6px;
+ border-radius:5px;font:inherit;color:#1f2937}
+td input.sub:hover{border-color:#dde3ec;background:#fff}
+td input.sub:focus{outline:none;border-color:#2f6bff;background:#fff;box-shadow:0 0 0 2px rgba(47,107,255,.1)}
+td.tiny{color:#9aa3b2;font-size:12px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scroll{max-height:420px;overflow:auto;border:1px solid #eef1f6;border-radius:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px 18px}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld label{font-size:12.5px;color:#6b7484}
+.fld input,.fld select{padding:7px 10px;border:1px solid #d8dee8;border-radius:7px;font-size:13.5px;outline:none;background:#fff}
+.fld input:focus,.fld select:focus{border-color:#2f6bff;box-shadow:0 0 0 3px rgba(47,107,255,.1)}
+.seg{display:inline-flex;border:1px solid #d8dee8;border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg label{padding:7px 16px;font-size:13px;cursor:pointer;color:#5a6577;border-right:1px solid #eef1f6}
+.seg label:last-child{border-right:0}
+.seg input{display:none}
+.seg input:checked+span{color:#2f6bff;font-weight:600}
+.seg label:has(input:checked){background:#f0f5ff}
+.hint{color:#8a93a0;font-size:12px;margin-top:6px}
+.bad{background:#fff8f0;border:1px solid #ffe0b2;color:#a5620a;border-radius:8px;
+ padding:8px 12px;font-size:12.5px;margin-top:10px;display:none}
+.sum{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+ border-top:1px solid #eef1f6;padding-top:14px;margin-top:6px}
+.sum .big{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+.sum .big span{font-size:12.5px;color:#8a93a0;font-weight:400;margin-right:6px}
+.res{margin-top:14px;display:none}
+.res.show{display:block}
+.res .box{background:#f4f9f4;border:1px solid #cfe8cf;border-radius:9px;padding:12px 16px;font-size:13px}
+.res a{color:#1f7a1f;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{background:#eef3fb;border-radius:6px;padding:3px 9px;font-size:12.5px;color:#37507d}
+.chip b{margin-left:5px}
+.filelist{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.file{display:flex;align-items:center;gap:6px;background:#f3f6fb;border-radius:7px;padding:4px 10px;font-size:12.5px}
+.file i{cursor:pointer;color:#b0b8c6;font-style:normal;font-weight:700}
+.file i:hover{color:#d93025}
+/* 按科目汇总 */
+.ssbox{border:1px solid #eef1f6;border-radius:8px;overflow:hidden}
+.ssbox table{font-size:13px}
+.ssbox th{position:static}
+.ssbox tfoot td{background:#f7f9fc;font-weight:600;border-top:1px solid #e3e9f3;border-bottom:0}
+.ssbox tfoot td.num{color:#1f2937}
+.ssbox .nm{font-weight:500}
+.ssbox .mt{color:#c2c9d6;font-weight:400;font-size:12px;margin-left:6px}
+.ssbox td.un{color:#a5620a}
+.th2{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.th2 .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.tag{font-size:11.5px;padding:1px 7px;border-radius:20px;background:#eef3fb;color:#37507d}
+.tag.warn{background:#fff3e6;color:#a5620a}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #fff;border-top-color:transparent;
+ border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(max-width:760px){
+ .wrap{padding:12px 12px 40px}
+ h1{font-size:17px}h1 small{display:block;margin:4px 0 0}
+ .card{padding:13px 12px}
+ th,td{padding:6px 5px;font-size:12px}
+ td.tiny{max-width:110px}
+ .seg label{padding:7px 11px;font-size:12.5px}
+ .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+ .scroll table{min-width:640px}
+ .scroll::after{content:'';display:block}
+}
+</style>
+</head>
+<body><div class="wrap">
+
+<header>
+  <h1>发票报销 <small>上传发票 → 核对科目 → 生成报销材料</small></h1>
+  <span class="priv">全部在你自己浏览器里处理，发票不上传任何服务器</span>
+</header>
+
+<div class="card">
+  <h2><span class="n">1</span>上传发票 PDF</h2>
+  <div class="drop" id="drop">
+    把发票 PDF 拖到这里，或 <b>点击选择文件</b><br>
+    <span style="font-size:12px">支持一次选多张，也可以分几次加</span>
+    <input type="file" id="pf" accept=".pdf" multiple hidden>
+  </div>
+  <div class="bad" id="bad"></div>
+</div>
+
+<div class="card" id="c2" style="display:none">
+  <h2><span class="n">2</span>核对清单 <span class="tag" id="cnt"></span></h2>
+  <div class="tools">
+    <button onclick="selAll()">全选 / 反选</button>
+    <input list="sublist" id="bulk" placeholder="批量设科目…" style="padding:6px 10px;border:1px solid #d8dee8;border-radius:7px;width:150px;font-size:13px">
+    <button onclick="bulkSet()">应用到选中行</button>
+    <button onclick="dedup()">按发票号去重</button>
+    <button onclick="delSel()">移除选中</button>
+    <span class="hint" style="margin-left:auto">科目格可直接改，也可选自定义</span>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr>
+        <th style="width:34px"><input type="checkbox" id="ckAll" onchange="toggleAll(this)"></th>
+        <th style="width:96px">开票日期</th>
+        <th style="width:186px">发票号码</th>
+        <th style="width:150px">科目</th>
+        <th style="width:100px" class="num">价税合计</th>
+        <th style="width:64px" class="num">条数</th>
+        <th>项目名称</th>
+      </tr></thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card" id="c2b" style="display:none">
+  <h2 class="th2"><span class="n" style="background:#0f9d58">¥</span>按科目汇总
+    <span class="tag" id="sscnt"></span>
+    <span class="sp"><button onclick="copySum(this)">复制汇总</button></span>
+  </h2>
+  <div class="ssbox">
+    <table>
+      <thead><tr>
+        <th>科目</th>
+        <th class="num" style="width:90px">张数</th>
+        <th class="num" style="width:150px">金额（元）</th>
+      </tr></thead>
+      <tbody id="ssbody"></tbody>
+      <tfoot><tr>
+        <td>合计</td>
+        <td class="num" id="ssn"></td>
+        <td class="num" id="sst"></td>
+      </tr></tfoot>
+    </table>
+  </div>
+  <div class="hint" id="sshint"></div>
+</div>
+
+<div class="card" id="c3" style="display:none">
+  <h2><span class="n">3</span>报销单设置</h2>
+  <div style="margin-bottom:14px">
+    <span style="font-size:12.5px;color:#6b7484;margin-right:10px">报销单来源</span>
+    <span class="seg">
+      <label><input type="radio" name="rm" value="auto" checked onchange="onMode()"><span>程序自动生成</span></label>
+      <label><input type="radio" name="rm" value="upload" onchange="onMode()"><span>上传纸质版</span></label>
+    </span>
+    <span id="upbox" style="display:none;margin-left:12px">
+      <input type="file" id="rf" accept=".pdf,.jpg,.jpeg,.png,.bmp" style="font-size:12.5px">
+    </span>
+    <span id="rfinfo" class="hint"></span>
+  </div>
+  <div class="grid" id="fields">
+    <div class="fld"><label>报销部门</label><input id="dept" placeholder="如：广州分公司"></div>
+    <div class="fld"><label>填表日期</label><input id="date" type="date"></div>
+    <div class="fld"><label>经手人</label><input id="handler"></div>
+    <div class="fld"><label>领款人</label><input id="receiver"></div>
+    <div class="fld"><label>用途前缀</label><input id="prefix" value="支付"></div>
+    <div class="fld"><label>原借款（元）</label><input id="borrow" placeholder="没有就留空"></div>
+    <div class="fld"><label>应退余款（元）</label><input id="refund" placeholder="没有就留空"></div>
+    <div class="fld"><label>单据及附件共（页）</label><input id="pages" placeholder="自动"></div>
+  </div>
+  <div style="margin-top:14px">
+    <span style="font-size:12.5px;color:#6b7484;margin-right:10px">打印版式</span>
+    <span class="seg" id="layseg">
+      <label><input type="radio" name="ly" value="原始尺寸" checked><span>原始尺寸</span></label>
+      <label><input type="radio" name="ly" value="A4 一页两版"><span>A4 一页两版</span></label>
+      <label><input type="radio" name="ly" value="A5 一页一版"><span>A5 一页一版</span></label>
+    </span>
+    <div class="hint">A4 两版打印时缩放必须选「实际大小 / 100%」，选「适应页面」会糊。</div>
+  </div>
+</div>
+
+<div class="card" id="c4" style="display:none">
+  <h2><span class="n">4</span>补充附件 <small style="font-weight:400;color:#8a93a0;font-size:12px">（可选，合并时排在最后）</small></h2>
+  <input type="file" id="af" accept=".pdf,.jpg,.jpeg,.png,.bmp" multiple style="font-size:12.5px">
+  <div class="filelist" id="attlist"></div>
+</div>
+
+<div class="card" id="c5" style="display:none">
+  <div class="sum">
+    <div class="big"><span>合计</span><span id="tt" style="font-size:19px;color:#1f2937;font-weight:600"></span>
+      <span id="up" style="font-size:12.5px;color:#8a93a0;margin-left:10px"></span></div>
+    <div><button class="primary" id="go" onclick="gen()">生成报销材料</button></div>
+  </div>
+  <div class="res" id="res"><div class="box" id="resbox"></div></div>
+</div>
+
+<datalist id="sublist"></datalist>
+</div>
+
+<script src="lib/pdf.min.js"></script>
+<script src="lib/pdf-lib.min.js"></script>
+<script src="lib/fontkit.umd.min.js"></script>
+<script src="lib/fflate.min.js"></script>
+<script>
+/* ============================================================
+   发票报销 · 纯前端版
+   解析（pdf.js）→ 报销单（pdf-lib）→ 合并 / 排版 / Excel（fflate 打包 zip）
+   全部在本机浏览器完成，文件不出本机。
+   ============================================================ */
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+
+/* ---------- 科目字典（同目录 科目字典.json 优先） ---------- */
+const DEFAULT_DICT = {
+  '业务招待费': ['餐费', '酒', '餐饮', '月饼'],
+  '小车费': ['修理', '维修', '汽油', '汽车租赁', '通行'],
+  '差旅费': ['航空', '机票', '高铁', '住宿'],
+  '交通费': ['客运'],
+  '办公费': ['软饮料', '收派', '物流', '清洁'],
+  '福利费': ['饼干', '水果'],
+  '投资者教育经费': ['会议', '讲师'],
+  '教育经费': ['培训费'],
+  '水电物业费': ['水', '电', '物业', '空调'],
+  '房租': ['不动产', '房租'],
+  '网络通讯及电话费': ['通信设备', '增值电信服务', '基础电信服务', '信息技术服务'],
+  '银行手续费': ['直接收费金融服务', '手续费'],
+  '保险费': ['保险'],
+  '会议费': ['会务'],
+};
+const EXTRA_SUBJECTS = ['业务招待费', '小车费', '差旅费', '交通费', '办公费', '福利费',
+  '投资者教育经费', '教育经费', '水电物业费', '房租',
+  '网络通讯及电话费', '银行手续费', '保险费', '会议费'];
+
+let DICT = DEFAULT_DICT;
+let SUB_ORDER = {};
+
+function setDict(d){
+  DICT = d;
+  SUB_ORDER = {};
+  Object.keys(d).forEach((k, i) => { SUB_ORDER[k] = i; });
+}
+setDict(DEFAULT_DICT);
+
+const REPORT_NAME = '费用报销单.pdf';
+const MERGED_NAME = '报销材料合并.pdf';
+const EXCEL_NAME = '发票汇总.xlsx';
+
+/* ---------- 通用小工具 ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = n => (n === '' || n == null) ? '' :
+  Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const norm = t => t.replace(/[\s\u3000]/g, '').replace(/（/g, '(').replace(/）/g, ')');
+
+function showBad(msg){
+  const b = $('bad');
+  b.textContent = msg;
+  b.style.display = msg ? 'block' : 'none';
+}
+
+/* ============================================================
+   一、发票解析（与 Python 版同一套规则）
+   ============================================================ */
+const NAME_SKIP = new Set(['合', '计', '合计', '备', '注', '备注', '小写', '大写',
+  '价税合计', '价税合计(大写)', '(小写)', '(大写)']);
+
+function cleanMoney(text){
+  const v = text.replace(/[¥￥,，\s]/g, '');
+  return /^-?\d+\.\d{2}$/.test(v) ? parseFloat(v) : null;
+}
+
+/* pdf.js 的 item → span。
+   两条要注意：① transform[5] 是自下而上的 y，必须先翻成自上而下；
+   ② 表头「金额」常被拆成「金」「额」两个 item，所以额外给一份按行合并的 rowCells
+      只用于识别表头，正文一律用原始 span，避免把「规格型号」并进项目名称。 */
+function buildSpans(tc, pageH){
+  const raw = [];
+  for (const it of tc.items){
+    if (!it.str) continue;
+    const tr = it.transform;
+    const baseTop = pageH - tr[5];
+    const h = it.height || Math.abs(tr[3]) || 9;
+    raw.push({ x0: tr[4], x1: tr[4] + (it.width || 0), baseTop, h, text: it.str });
+  }
+  const rowsMap = new Map();
+  for (const s of raw){
+    const key = Math.round(s.baseTop / 2) * 2;
+    if (!rowsMap.has(key)) rowsMap.set(key, []);
+    rowsMap.get(key).push(s);
+  }
+  const spans = [], rows = [];
+  for (const key of Array.from(rowsMap.keys()).sort((a, b) => a - b)){
+    const arr = rowsMap.get(key).sort((a, b) => a.x0 - b.x0);
+    for (const s of arr){
+      if (!s.text.trim()) continue;
+      const h = s.h || 9;
+      spans.push({
+        x0: s.x0, x1: s.x1,
+        y0: s.baseTop - h * 0.78, y1: s.baseTop + h * 0.22,
+        base: s.baseTop,
+        text: s.text.trim(),
+      });
+    }
+    // 仅用于表头识别的合并版本（容差 14pt）
+    const cells = [];
+    let cur = null;
+    for (const s of arr){
+      if (!s.text.trim()) continue;
+      if (cur && s.x0 - cur.x1 <= 10){
+        cur.text += s.text;
+        cur.x1 = Math.max(cur.x1, s.x1);
+      } else {
+        if (cur) cells.push(cur);
+        cur = { x0: s.x0, x1: s.x1, y0: s.baseTop - 8, y1: s.baseTop + 2, text: s.text };
+      }
+    }
+    if (cur) cells.push(cur);
+    rows.push({ y: key, cells });
+  }
+  return { spans, rows, text: rows.map(r => r.cells.map(c => c.text.trim()).join('')).join('\n') };
+}
+
+function findHeader(spans, rows){
+  let hName = null, hSpec = null, hAmount = null, hRate = null;
+  for (const row of rows){
+    for (const c of row.cells){
+      const t = norm(c.text);
+      if (!hName && t === '项目名称') hName = c;
+      else if (!hSpec && t === '规格型号') hSpec = c;
+      else if (!hAmount && (t === '金额' || t === '金额(元)')) hAmount = c;
+      else if (!hRate && t.indexOf('税率') === 0) hRate = c;
+    }
+  }
+  let endY = null;
+  if (hName){
+    for (const s of spans){
+      const t = norm(s.text);
+      if (s.y0 > hName.y1 && (t === '合' || t.indexOf('合计') === 0 || t.indexOf('价税合计') === 0)){
+        if (endY === null || s.y0 < endY) endY = s.y0;
+      }
+    }
+  }
+  return { hName, hSpec, hAmount, hRate, endY };
+}
+
+function dedupName(s){
+  const n = s.length;
+  if (n < 8) return s;
+  for (let p = 2; p <= n / 2; p++){
+    if (n % p === 0){
+      const head = s.slice(0, p);
+      if (head.repeat(n / p) === s) return head;
+    }
+  }
+  for (let k = Math.floor(n / 2); k < n - 3; k++){
+    if (s.startsWith(s.slice(k))) return s.slice(0, k);
+  }
+  return s;
+}
+
+async function parseInvoice(file){
+  const raw = await file.arrayBuffer();
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(raw.slice(0)) }).promise;
+
+  let flat = '';
+  let nameParts = [];
+  let detailRows = 0;
+  let total = null;
+  const moneyPool = [];
+  let specX = null, bodyTop = null, bodyBottom = null;
+
+  for (let p = 1; p <= doc.numPages; p++){
+    const page = await doc.getPage(p);
+    const tc = await page.getTextContent();
+    const pageH = page.view[3] - page.view[1];
+    const built = buildSpans(tc, pageH);
+    const spans = built.spans;
+    flat += built.text + '\n';
+
+    const h = findHeader(spans, built.rows);
+    if (h.hName){
+      specX = h.hSpec ? h.hSpec.x0 - 2 : 115;
+      bodyTop = h.hName.y1 - 1;
+      bodyBottom = (h.endY != null) ? h.endY - 1 : pageH;
+    }
+    if (specX === null) continue;
+
+    const body = spans.filter(s => s.y0 >= bodyTop && s.y1 <= bodyBottom + 2);
+
+    const nameLines = [];
+    for (const s of body){
+      if (s.x0 >= specX) continue;
+      const t = norm(s.text);
+      if (NAME_SKIP.has(t) || /^(开票人|收款人|复核人)/.test(t)) continue;
+      nameLines.push([s.y0, s.x0, s.text]);
+    }
+    nameLines.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    for (const it of nameLines) nameParts.push(it[2]);
+
+    const rateLines = new Set(), amountLines = new Set();
+    for (const s of body){
+      if (s.text.indexOf('%') >= 0) rateLines.add(Math.round(s.base / 3));
+      if (h.hAmount && h.hRate && s.x0 >= h.hAmount.x0 - 30 && s.x1 <= h.hRate.x0 - 2){
+        if (cleanMoney(s.text) !== null) amountLines.add(Math.round(s.base / 3));
+      }
+    }
+    detailRows += rateLines.size ? rateLines.size : amountLines.size;
+
+    if (total === null){
+      const labels = spans.filter(s => s.text.indexOf('小写') >= 0);
+      if (labels.length){
+        const label = labels[0];
+        let best = null;
+        for (const s of spans){
+          const money = cleanMoney(s.text);
+          if (money === null || s.x0 < label.x0 - 2) continue;
+          const gap = Math.abs(s.base - label.base);
+          if (gap <= 16 && (best === null || gap < best[0])) best = [gap, money];
+        }
+        if (best) total = best[1];
+      }
+    }
+
+    for (const s of spans){
+      const money = cleanMoney(s.text);
+      if (money !== null) moneyPool.push(money);
+    }
+  }
+
+  const pages = doc.numPages;
+  doc.destroy();
+
+  if (total === null && moneyPool.length) total = Math.max.apply(null, moneyPool);
+
+  let nameText = nameParts.join('').replace(/\d{10,}/g, '');
+  nameText = dedupName(nameText);
+
+  let subject = '';
+  outer:
+  for (const key of Object.keys(DICT)){
+    for (const w of DICT[key]){
+      if (w && new RegExp(w).test(nameText)){ subject = key; break outer; }
+    }
+  }
+
+  let no = '', date = '';
+  const m20 = flat.match(/(?<!\d)(\d{20})(?!\d)/);
+  if (m20) no = m20[1];
+  const md = flat.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+  if (md) date = md[1] + '-' + String(+md[2]).padStart(2, '0') + '-' + String(+md[3]).padStart(2, '0');
+
+  return {
+    file, name: file.name, date, no, subject,
+    total: total === null ? '' : Math.round(total * 100) / 100,
+    rows: detailRows, name2: nameText, pages,
+  };
+}
+
+/* ============================================================
+   二、金额大写
+   ============================================================ */
+const DIGITS = '零壹贰叁肆伍陆柒捌玖';
+const UNITS = ['', '拾', '佰', '仟'];
+const BIG_UNITS = ['', '万', '亿', '万亿'];
+
+function intUpper(num){
+  if (num === 0) return '零';
+  const groups = [];
+  while (num > 0){ groups.push(num % 10000); num = Math.floor(num / 10000); }
+  const parts = [];
+  for (let gi = groups.length - 1; gi >= 0; gi--){
+    const g = groups[gi];
+    if (g === 0){
+      if (parts.length && !parts[parts.length - 1].endsWith('零')) parts.push('零');
+      continue;
+    }
+    let s = '', zeroFlag = false;
+    for (let pos = 3; pos >= 0; pos--){
+      const d = Math.floor(g / Math.pow(10, pos)) % 10;
+      if (d === 0){ if (s) zeroFlag = true; }
+      else {
+        if (zeroFlag){ s += '零'; zeroFlag = false; }
+        s += DIGITS[d] + UNITS[pos];
+      }
+    }
+    if (g < 1000 && parts.length && parts[parts.length - 1] !== '零') s = '零' + s;
+    parts.push(s + BIG_UNITS[gi]);
+  }
+  return parts.join('').replace(/^零+/, '').replace(/零+$/, '');
+}
+
+function rmbUpper(amount){
+  amount = Math.round((Number(amount) + 1e-9) * 100) / 100;
+  if (!isFinite(amount)) return '';
+  if (amount === 0) return '零圆整';
+  const negative = amount < 0;
+  amount = Math.abs(amount);
+  const integer = Math.floor(amount);
+  const cents = Math.round((amount - integer) * 100);
+  const jiao = Math.floor(cents / 10), fen = cents % 10;
+  let s = '';
+  if (integer) s += intUpper(integer) + '圆';
+  if (jiao === 0 && fen === 0) s += '整';
+  else {
+    if (jiao) s += DIGITS[jiao] + '角';
+    else if (integer) s += '零';
+    if (fen) s += DIGITS[fen] + '分';
+  }
+  return (negative ? '负' : '') + s;
+}
+
+/* ============================================================
+   三、报销单 PDF（版面与 tkinter 版一致：A4 横向 842×595）
+   ============================================================ */
+const PW = 842, PH = 595, MARGIN = 40;
+let FONT_REG = null, FONT_BOLD = null;
+
+async function loadFonts(){
+  if (FONT_REG) return;
+  const grab = u => fetch(u).then(r => {
+    if (!r.ok) throw new Error('读不到 ' + u);
+    return r.arrayBuffer();
+  });
+  let a, b;
+  try {
+    [a, b] = await Promise.all([grab('lib/cn.ttf'), grab('lib/cnb.ttf')]);
+  } catch (e){
+    throw new Error('字体没加载上。请在这个文件夹里打开命令行执行：python -m http.server 8000，' +
+      '然后用 http://127.0.0.1:8000/发票报销单.html 打开（直接双击 html 文件是不行的）');
+  }
+  FONT_REG = new Uint8Array(a);
+  FONT_BOLD = new Uint8Array(b);
+}
+
+function makeCanvas(pdfDoc, fonts){
+  const F = fonts.reg, FB = fonts.bold;
+  const Y = y => PH - y;
+  return {
+    width: (s, size, bold) => (bold ? FB : F).widthOfTextAtSize(s, size),
+    text(x, y, s, size, bold){
+      if (!s) return;
+      this._page.drawText(s, { x, y: PH - y, size: size || 10.5, font: bold ? FB : F });
+    },
+    center(cx, y, s, size, bold){
+      if (!s) return;
+      this.text(cx - this.width(s, size, bold) / 2, y, s, size, bold);
+    },
+    cell(x0, y0, x1, y1, s, size, align, bold, pad){
+      if (!s) return;
+      size = size || 10.5; pad = pad == null ? 8 : pad;
+      const w = this.width(s, size, bold);
+      let x = x0 + pad;
+      if (align === 'center') x = x0 + (x1 - x0 - w) / 2;
+      else if (align === 'right') x = x1 - pad - w;
+      const y = y0 + ((y1 - y0) + size * 0.70) / 2;
+      this.text(x, y, s, size, bold);
+    },
+    vtext(cx, y0, y1, s, size){
+      if (!s) return;
+      size = size || 10.5;
+      const avail = y1 - y0;
+      if (avail < s.length * size * 1.1) size = Math.max(6, avail / (s.length * 1.1));
+      let step = Math.min(avail / s.length, size * 2.2);
+      step = Math.max(step, size * 1.05);
+      const total = step * s.length;
+      const top = y0 + (avail - total) / 2 + size;
+      for (let i = 0; i < s.length; i++) this.center(cx, top + i * step, s[i], size);
+    },
+  };
+}
+
+async function buildReportPdf(items, total, info){
+  await loadFonts();
+  const pdfDoc = await PDFLib.PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
+  // 注意：pdf-lib 的 { subset: true } 对中文字体有 bug（大片字画不出来），
+  // 所以这里整份嵌入。字体文件已用 fonttools 去掉 hinting 精简到 ~1.7MB/个。
+  const reg = await pdfDoc.embedFont(FONT_REG);
+  const bold = await pdfDoc.embedFont(FONT_BOLD);
+  const page = pdfDoc.addPage([PW, PH]);
+  const c = makeCanvas(pdfDoc, { reg, bold });
+  c._page = page;
+
+  const line = (x1, y1, x2, y2, w) => page.drawLine({
+    start: { x: x1, y: PH - y1 }, end: { x: x2, y: PH - y2 },
+    thickness: w, color: PDFLib.rgb(0, 0, 0),
+  });
+  const rect = (x0, y0, x1, y1) => page.drawRectangle({
+    x: x0, y: PH - y1, width: x1 - x0, height: y1 - y0,
+    borderColor: PDFLib.rgb(0, 0, 0), borderWidth: 1,
+  });
+
+  const x0 = MARGIN, x4 = PW - MARGIN;
+  const cUse = 300, cAmt = 470, cTag = 510, cBorrow = 660;
+
+  const title = '费用报销单';
+  c.center(PW / 2, 76, title, 26, true);
+  const tw = c.width(title, 26, true);
+  line((PW - tw) / 2 - 6, 88, (PW + tw) / 2 + 6, 88, 1.4);
+  line((PW - tw) / 2 - 6, 92, (PW + tw) / 2 + 6, 92, 0.6);
+
+  let y = 120;
+  c.text(x0, y, '报销部门：', 10.5);
+  c.text(x0 + 62, y, info.dept || '', 10.5);
+  line(x0 + 60, y + 3, x0 + 200, y + 3, 0.6);
+
+  let dateTxt = '';
+  if (info.date){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(info.date);
+    dateTxt = m ? (+m[1]) + ' 年 ' + (+m[2]) + ' 月 ' + (+m[3]) + ' 日填' : info.date;
+  }
+  c.center(PW / 2, y, dateTxt, 10.5);
+
+  const label = '单据及附件共';
+  const numS = String(info.pages == null ? '' : info.pages);
+  const labelW = c.width(label, 10.5);
+  const pageW = c.width('页', 10.5);
+  const numW = 44;
+  const startX = x4 - labelW - numW - pageW - 10;
+  c.text(startX, y, label, 10.5);
+  c.center(startX + labelW + numW / 2, y, numS, 11);
+  c.text(x4 - pageW, y, '页', 10.5);
+  line(startX + labelW + 4, y + 3, startX + labelW + numW, y + 3, 0.6);
+
+  const top = 142, hdrH = 34;
+  const n = Math.max(4, items.length);
+  const avail = 520 - top - hdrH - 34 - 38;
+  const rowH = Math.min(42, avail / n);
+  const dataTop = top + hdrH;
+  const dataBot = dataTop + n * rowH;
+  const totalBot = dataBot + 34;
+  const bot = totalBot + 38;
+
+  rect(x0, top, x4, bot);
+  line(cUse, top, cUse, totalBot, 0.9);
+  line(cAmt, top, cAmt, bot, 0.9);
+  line(cTag, top, cTag, totalBot, 0.9);
+  line(cBorrow, totalBot, cBorrow, bot, 0.9);
+
+  const splitY = (dataTop + totalBot) / 2;
+
+  line(x0, dataTop, x4, dataTop, 0.9);
+  for (let i = 0; i <= n; i++){
+    const yy = dataTop + i * rowH;
+    line(x0, yy, cAmt, yy, 0.7);
+  }
+  line(x0, totalBot, x4, totalBot, 0.9);
+  line(cAmt, splitY, x4, splitY, 0.9);
+
+  c.cell(x0, top, cUse, dataTop, '用        途', 11, 'center', false, 8);
+  c.cell(cUse, top, cAmt, dataTop, '金额（元）', 10.5, 'center', false, 8);
+  c.vtext((cAmt + cTag) / 2, dataTop, splitY, '备注', 10.5);
+  c.vtext((cAmt + cTag) / 2, splitY, totalBot, '领导审批', 10.5);
+
+  for (let i = 0; i < n; i++){
+    const yy = dataTop + i * rowH;
+    if (i < items.length){
+      c.cell(x0, yy, cUse, yy + rowH, items[i][0], 11, 'left', false, 18);
+      c.cell(cUse, yy, cAmt, yy + rowH, items[i][1].toFixed(2), 11, 'right', false, 12);
+    }
+  }
+
+  c.cell(x0, dataBot, cUse, totalBot, '合        计', 11, 'center', false, 8);
+  c.cell(cUse, dataBot, cAmt, totalBot, '¥ ' + total.toFixed(2), 11.5, 'right', true, 12);
+
+  c.cell(x0, totalBot, cAmt, bot, '金额大写：' + rmbUpper(total), 10.5, 'left', false, 10);
+  c.cell(cAmt, totalBot, cBorrow, bot, '原借款：' + (info.borrow || '') + ' 元', 10, 'left', false, 8);
+  c.cell(cBorrow, totalBot, x4, bot, '应退余款：' + (info.refund || '') + ' 元', 10, 'left', false, 8);
+
+  const sy = bot + 34;
+  c.text(x0, sy, '会计主管：', 10.5);
+  c.text(x0 + 150, sy, '复核：', 10.5);
+  c.text(x0 + 290, sy, '出纳：', 10.5);
+  c.text(x0 + 430, sy, '经手人：' + (info.handler || ''), 10.5);
+  c.text(x0 + 610, sy, '领款人：' + (info.receiver || ''), 10.5);
+
+  return await pdfDoc.save();
+}
+
+/* ---------- 图片 → A4 页（方向跟图片走） ---------- */
+async function imageBytes(file){
+  if (/\.(jpe?g|png)$/i.test(file.name)) return { kind: /\.jpe?g$/i.test(file.name) ? 'jpg' : 'png', data: await file.arrayBuffer() };
+  // bmp 等浏览器能解码的，统一转 PNG
+  const bmp = await createImageBitmap(file);
+  const cv = document.createElement('canvas');
+  cv.width = bmp.width; cv.height = bmp.height;
+  cv.getContext('2d').drawImage(bmp, 0, 0);
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  return { kind: 'png', data: await blob.arrayBuffer() };
+}
+
+async function addImagePage(pdfDoc, file){
+  const { kind, data } = await imageBytes(file);
+  const img = kind === 'jpg' ? await pdfDoc.embedJpg(data) : await pdfDoc.embedPng(data);
+  const landscape = img.width > img.height;
+  const pw = landscape ? 842 : 595, ph = landscape ? 595 : 842;
+  const page = pdfDoc.addPage([pw, ph]);
+  const m = 24;
+  const s = Math.min((pw - m * 2) / img.width, (ph - m * 2) / img.height);
+  const w = img.width * s, h = img.height * s;
+  page.drawImage(img, { x: (pw - w) / 2, y: (ph - h) / 2, width: w, height: h });
+}
+
+/* ============================================================
+   四、合并 / 排版
+   ============================================================ */
+async function mergeAll(reportBytes, records, attachFiles){
+  const out = await PDFLib.PDFDocument.create();
+  const rep = await PDFLib.PDFDocument.load(reportBytes);
+  (await out.copyPages(rep, rep.getPageIndices())).forEach(p => out.addPage(p));
+
+  for (const r of records){
+    const buf = await r.file.arrayBuffer();
+    const d = await PDFLib.PDFDocument.load(buf);
+    (await out.copyPages(d, d.getPageIndices())).forEach(p => out.addPage(p));
+  }
+  for (const a of attachFiles){
+    if (/\.pdf$/i.test(a.name)){
+      const d = await PDFLib.PDFDocument.load(await a.arrayBuffer());
+      (await out.copyPages(d, d.getPageIndices())).forEach(p => out.addPage(p));
+    } else {
+      await addImagePage(out, a);
+    }
+  }
+  return { bytes: await out.save(), pages: out.getPageCount() };
+}
+
+async function impose(bytes, mode){
+  const src = await PDFLib.PDFDocument.load(bytes);
+  const out = await PDFLib.PDFDocument.create();
+  const n = src.getPageCount();
+
+  if (mode === 'a4_2up'){
+    const W = 595, H = 842, pad = 10, gap = 6;
+    const cellH = (H - pad * 2 - gap) / 2;
+    for (let i = 0; i < n; i += 2){
+      const page = out.addPage([W, H]);
+      const tops = [pad, pad + cellH + gap];
+      for (let k = 0; k < 2 && i + k < n; k++){
+        const sp = src.getPage(i + k);
+        const sw = sp.getWidth(), sh = sp.getHeight();
+        const cw = W - pad * 2, chh = cellH;
+        const s = Math.min(cw / sw, chh / sh);
+        const ep = await out.embedPage(sp);
+        page.drawPage(ep, {
+          x: pad + (cw - sw * s) / 2,
+          y: H - tops[k] - chh + (chh - sh * s) / 2,
+          xScale: s, yScale: s,
+        });
+      }
+    }
+  } else {
+    for (let i = 0; i < n; i++){
+      const sp = src.getPage(i);
+      const sw = sp.getWidth(), sh = sp.getHeight();
+      const landscape = sw > sh;
+      const W = landscape ? 595 : 420, H = landscape ? 420 : 595;
+      const page = out.addPage([W, H]);
+      const s = Math.min((W - 16) / sw, (H - 16) / sh);
+      const ep = await out.embedPage(sp);
+      page.drawPage(ep, {
+        x: (W - sw * s) / 2, y: (H - sh * s) / 2, xScale: s, yScale: s,
+      });
+    }
+  }
+  return await out.save();
+}
+
+/* ============================================================
+   五、Excel（自建 OOXML，带边框/底色/千分位，等同 openpyxl 观感）
+   ============================================================ */
+function xmlEsc(s){
+  return String(s == null ? '' : s).replace(/[&<>]/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+}
+function colName(i){
+  let s = '';
+  while (i > 0){ const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); }
+  return s;
+}
+
+function buildXlsx(records, total){
+  const headers = ['序号', '开票日期', '发票号码', '科目', '价税合计', '明细条数', '项目名称', '文件名'];
+  const widths = [6, 12, 24, 14, 13, 10, 56, 46];
+  const rows = [];
+  rows.push(headers.map((h, i) => ({ t: 's', v: h, s: 1 })));
+  records.forEach((r, i) => {
+    rows.push([
+      { t: 'n', v: i + 1, s: 2 },
+      { t: 's', v: r.date, s: 2 },
+      { t: 's', v: r.no, s: 2 },
+      { t: 's', v: r.subject, s: 6 },
+      { t: 'n', v: (r.total === '' ? null : r.total), s: 4 },
+      { t: 'n', v: r.rows, s: 2 },
+      { t: 's', v: r.name2, s: 6 },
+      { t: 's', v: r.name, s: 6 },
+    ]);
+  });
+  const last = records.length + 2;
+  rows.push([{ t: 's', v: '合计', s: 5 }, null, null, null, { t: 'n', v: total, s: 4 }]);
+
+  let sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
+    '<cols>' + widths.map((w, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>').join('') + '</cols>' +
+    '<sheetData>';
+  rows.forEach((row, ri) => {
+    const r = ri + 1;
+    sheet += '<row r="' + r + '">';
+    row.forEach((cell, ci) => {
+      if (!cell) return;
+      const ref = colName(ci + 1) + r;
+      if (cell.v === null || cell.v === undefined || cell.v === '') {
+        sheet += '<c r="' + ref + '" s="' + cell.s + '"/>';
+      } else if (cell.t === 'n') {
+        sheet += '<c r="' + ref + '" s="' + cell.s + '"><v>' + Number(cell.v) + '</v></c>';
+      } else {
+        sheet += '<c r="' + ref + '" s="' + cell.s + '" t="inlineStr"><is><t xml:space="preserve">' +
+          xmlEsc(cell.v) + '</t></is></c>';
+      }
+    });
+    sheet += '</row>';
+  });
+  sheet += '</sheetData></worksheet>';
+
+  const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<fonts count="2"><font><sz val="11"/><name val="宋体"/></font>' +
+    '<font><b/><sz val="11"/><name val="宋体"/></font></fonts>' +
+    '<fills count="3"><fill><patternFill patternType="none"/></fill>' +
+    '<fill><patternFill patternType="gray125"/></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFE8EEF7"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+    '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
+    '<border><left style="thin"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FFBFBFBF"/></right>' +
+    '<top style="thin"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FFBFBFBF"/></bottom><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="7">' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' +
+    '<xf numFmtId="4" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>' +
+    '<xf numFmtId="4" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>' +
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>' +
+    '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+
+  const files = {
+    '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+      '</Types>',
+    '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+      '</Relationships>',
+    'xl/workbook.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<sheets><sheet name="发票汇总" sheetId="1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+      '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+      '</Relationships>',
+    'xl/styles.xml': styles,
+    'xl/worksheets/sheet1.xml': sheet,
+  };
+  const zipped = {};
+  for (const k of Object.keys(files)) zipped[k] = fflate.strToU8(files[k]);
+  return fflate.zipSync(zipped, { level: 6 });
+}
+
+/* ============================================================
+   六、界面交互
+   ============================================================ */
+let RECORDS = [];
+let ATTACH = [];
+let REPORT_FILE = null;
+
+function subList(){
+  const out = Object.keys(DICT);
+  EXTRA_SUBJECTS.forEach(s => { if (out.indexOf(s) < 0) out.push(s); });
+  return out;
+}
+
+function initSubjects(){
+  $('sublist').innerHTML = subList().map(s => '<option value="' + esc(s) + '">').join('');
+}
+
+fetch('科目字典.json').then(r => r.ok ? r.json() : null).then(d => {
+  if (d && typeof d === 'object' && Object.keys(d).length) setDict(d);
+}).catch(() => {}).finally(initSubjects);
+initSubjects();
+
+const drop = $('drop'), pf = $('pf');
+drop.onclick = () => pf.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); upload([].slice.call(e.dataTransfer.files)); };
+pf.onchange = () => { upload([].slice.call(pf.files)); pf.value = ''; };
+
+async function upload(files){
+  const pdfs = files.filter(f => /\.pdf$/i.test(f.name));
+  if (!pdfs.length){ showBad('只接受 PDF 文件'); return; }
+  const old = drop.innerHTML;
+  drop.innerHTML = '正在解析 ' + pdfs.length + ' 个文件…';
+  showBad('');
+  const bad = [];
+  for (const f of pdfs){
+    try {
+      const r = await parseInvoice(f);
+      if (!r.no && r.total === '') { bad.push(f.name + '（没读到发票内容）'); continue; }
+      if (RECORDS.some(x => x.no === r.no && r.no)) { bad.push(f.name + '（重复，已有同号）'); continue; }
+      RECORDS.push(r);
+    } catch (e){
+      bad.push(f.name + '（' + e.message + '）');
+    }
+  }
+  drop.innerHTML = old;
+  render();
+  if (bad.length){
+    showBad('以下 ' + bad.length + ' 个没读进去：' + bad.join('；'));
+  }
+}
+
+function render(){
+  if (!RECORDS.length) return;
+  $('tb').innerHTML = RECORDS.map((r, i) => `
+    <tr>
+      <td><input type="checkbox" class="rowck"></td>
+      <td>${esc(r.date)}</td>
+      <td style="font-variant-numeric:tabular-nums">${esc(r.no)}</td>
+      <td><input class="sub" list="sublist" value="${esc(r.subject)}" oninput="onSub(${i}, this.value)"></td>
+      <td class="num">${fmt(r.total)}</td>
+      <td class="num">${r.rows}</td>
+      <td class="tiny" title="${esc(r.name2)}">${esc(r.name2)}</td>
+    </tr>`).join('');
+  ['c2', 'c2b', 'c3', 'c4', 'c5'].forEach(id => { $(id).style.display = 'block'; });
+  $('cnt').textContent = RECORDS.length + ' 张';
+  if (!$('date').value) $('date').value = new Date().toISOString().slice(0, 10);
+  refreshSum();
+}
+
+function onSub(i, v){ RECORDS[i].subject = v; refreshSum(); }
+
+/* 按科目归集：顺序与生成的报销单明细一致（字典顺序，未分类排最后） */
+function subjectSum(){
+  const order = [], map = {};
+  RECORDS.forEach(r => {
+    const k = r.subject || '';
+    if (!(k in map)){ map[k] = { subject: k, n: 0, amt: 0 }; order.push(k); }
+    map[k].n += 1;
+    if (r.total !== '') map[k].amt += Number(r.total);
+  });
+  const w = s => s ? (SUB_ORDER[s] == null ? 100 : SUB_ORDER[s]) : 999;
+  return order.map(k => map[k]).sort((a, b) =>
+    (w(a.subject) - w(b.subject)) ||
+    String(a.subject).localeCompare(String(b.subject), 'zh'));
+}
+
+function grandTotal(){
+  let t = 0;
+  RECORDS.forEach(r => { if (r.total !== '') t += Number(r.total); });
+  return Math.round(t * 100) / 100;
+}
+
+function refreshSum(){
+  const t = grandTotal();
+  $('tt').textContent = '¥ ' + fmt(t);
+  $('up').textContent = '（' + rmbUpper(t) + '）';
+
+  const gs = subjectSum();
+  const sorted = gs.filter(g => g.subject);
+  const un = gs.filter(g => !g.subject).reduce((s, g) => s + g.n, 0);
+  $('ssbody').innerHTML = gs.map(g => `
+    <tr>
+      <td class="${g.subject ? 'nm' : 'nm un'}">${g.subject ? esc(g.subject) : '未分类'}</td>
+      <td class="num">${g.n}</td>
+      <td class="num">${fmt(Math.round(g.amt * 100) / 100)}</td>
+    </tr>`).join('');
+  $('ssn').textContent = RECORDS.length + ' 张';
+  $('sst').textContent = fmt(t);
+  $('sscnt').textContent = sorted.length ? (sorted.length + ' 个科目') : '全部未分类';
+  $('sshint').textContent = un
+    ? '有 ' + un + ' 张还没分类，这些在报销单上会归到「其他费用」，建议先在清单里补上科目。'
+    : '照这个填纸质报销单即可；「张数」是该科目下的发票张数。';
+}
+
+/* 复制成分隔符文本，粘到 Excel 就是三列 */
+function sumText(){
+  const lines = ['科目\t张数\t金额'];
+  subjectSum().forEach(g => {
+    lines.push((g.subject || '未分类') + '\t' + g.n + '\t' + (Math.round(g.amt * 100) / 100).toFixed(2));
+  });
+  lines.push('合计\t' + RECORDS.length + '\t' + grandTotal().toFixed(2));
+  return lines.join('\n');
+}
+
+function copySum(btn){
+  const txt = sumText();
+  const old = btn.textContent;
+  const done = () => {
+    btn.textContent = '已复制';
+    setTimeout(() => { btn.textContent = old; }, 1400);
+  };
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); }
+    catch (e){ alert('浏览器不允许自动复制，请手动选中表格复制。'); }
+    ta.remove();
+  };
+  if (navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(txt).then(done, fallback);
+  } else {
+    fallback();
+  }
+}
+
+function toggleAll(ck){
+  document.querySelectorAll('.rowck').forEach(c => { c.checked = ck.checked; });
+}
+function selAll(){
+  document.querySelectorAll('.rowck').forEach(c => { c.checked = !c.checked; });
+}
+function selIdx(){
+  const out = [];
+  document.querySelectorAll('#tb tr').forEach((tr, i) => {
+    if (tr.querySelector('.rowck').checked) out.push(i);
+  });
+  return out;
+}
+function bulkSet(){
+  const v = $('bulk').value.trim();
+  if (!v) return alert('先填要设置的科目');
+  const idx = selIdx();
+  if (!idx.length) return alert('先勾选要改的行');
+  idx.forEach(i => { RECORDS[i].subject = v; });
+  render();
+}
+function delSel(){
+  const idx = selIdx();
+  if (!idx.length) return alert('先勾选要移除的行');
+  RECORDS = RECORDS.filter((r, i) => idx.indexOf(i) < 0);
+  if (!RECORDS.length){ location.reload(); return; }
+  render();
+}
+function dedup(){
+  const seen = {};
+  let n = 0;
+  RECORDS = RECORDS.filter(r => {
+    if (r.no && seen[r.no]){ n++; return false; }
+    if (r.no) seen[r.no] = 1;
+    return true;
+  });
+  render();
+  showBad(n ? '已去掉 ' + n + ' 张重复发票' : '没有发现重复发票');
+  if (!n) setTimeout(() => showBad(''), 1500);
+}
+
+function onMode(){
+  const v = document.querySelector('input[name=rm]:checked').value;
+  $('upbox').style.display = v === 'upload' ? 'inline' : 'none';
+  $('fields').style.opacity = v === 'upload' ? .45 : 1;
+  $('fields').querySelectorAll('input').forEach(el => {
+    el.disabled = (v === 'upload' && el.id !== 'prefix');
+  });
+}
+
+$('rf').onchange = function(){
+  const f = this.files[0];
+  if (!f) return;
+  REPORT_FILE = f;
+  $('rfinfo').textContent = '已选择：' + f.name;
+};
+
+$('af').onchange = function(){
+  const files = [].slice.call(this.files);
+  if (!files.length) return;
+  files.forEach(f => ATTACH.push(f));
+  renderAtt();
+  this.value = '';
+};
+function renderAtt(){
+  $('attlist').innerHTML = ATTACH.map((a, i) =>
+    `<span class="file">${esc(a.name)}<i onclick="rmAtt(${i})">×</i></span>`).join('');
+}
+function rmAtt(i){
+  ATTACH.splice(i, 1);
+  renderAtt();
+}
+
+/* ---------- 生成 ---------- */
+function sortRecords(rs){
+  const w = s => s ? (SUB_ORDER[s] == null ? 100 : SUB_ORDER[s]) : 999;
+  return rs.slice().sort((a, b) =>
+    (w(a.subject) - w(b.subject)) ||
+    String(a.subject || '').localeCompare(String(b.subject || ''), 'zh') ||
+    String(a.date || '').localeCompare(String(b.date || '')) ||
+    String(a.no || '').localeCompare(String(b.no || '')));
+}
+
+function buildItems(rs, prefix){
+  const order = [], sums = {};
+  rs.forEach(r => {
+    const k = r.subject || '';
+    if (!(k in sums)){ sums[k] = 0; order.push(k); }
+    if (r.total !== '') sums[k] += Number(r.total);
+  });
+  return order.map(k => [prefix + (k || '其他费用'), Math.round(sums[k] * 100) / 100]);
+}
+
+function download(bytes, filename, mime){
+  const blob = new Blob([bytes], { type: mime || 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 4000);
+}
+
+async function gen(){
+  const btn = $('go');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>生成中…';
+  try {
+    if (!RECORDS.length) throw new Error('还没有发票');
+
+    const rows = sortRecords(RECORDS);
+    const prefix = $('prefix').value.trim();
+    const items = buildItems(rows, prefix);
+    const total = Math.round(items.reduce((s, x) => s + x[1], 0) * 100) / 100;
+
+    const mode = document.querySelector('input[name=rm]:checked').value;
+    const layout = document.querySelector('input[name=ly]:checked').value;
+
+    let reportPages = 1;
+    if (mode === 'upload'){
+      if (!REPORT_FILE) throw new Error('选了上传纸质报销单，但没上传文件');
+      if (/\.pdf$/i.test(REPORT_FILE.name)){
+        const d = await PDFLib.PDFDocument.load(await REPORT_FILE.arrayBuffer());
+        reportPages = d.getPageCount();
+      }
+    }
+
+    let autoPages = reportPages;
+    rows.forEach(r => { autoPages += r.pages || 1; });
+    for (const a of ATTACH){
+      if (/\.pdf$/i.test(a.name)){
+        try {
+          const d = await PDFLib.PDFDocument.load(await a.arrayBuffer());
+          autoPages += d.getPageCount();
+        } catch (e){ autoPages += 1; }
+      } else autoPages += 1;
+    }
+    if (layout === 'A4 一页两版') autoPages = Math.ceil(autoPages / 2);
+
+    const pagesIn = $('pages').value.trim();
+    const pages = /^\d+$/.test(pagesIn) ? parseInt(pagesIn, 10) : autoPages;
+
+    // 报销单
+    let reportBytes;
+    if (mode === 'upload'){
+      if (/\.pdf$/i.test(REPORT_FILE.name)){
+        reportBytes = await REPORT_FILE.arrayBuffer();
+      } else {
+        const d = await PDFLib.PDFDocument.create();
+        await addImagePage(d, REPORT_FILE);
+        reportBytes = await d.save();
+      }
+    } else {
+      reportBytes = await buildReportPdf(items, total, {
+        dept: $('dept').value.trim(),
+        date: $('date').value,
+        pages: pages,
+        borrow: $('borrow').value.trim(),
+        refund: $('refund').value.trim(),
+        handler: $('handler').value.trim(),
+        receiver: $('receiver').value.trim(),
+      });
+    }
+
+    // 合并
+    let merged = await mergeAll(reportBytes, rows, ATTACH);
+    let mergedPages = merged.pages;
+    if (layout === 'A4 一页两版'){ merged = { bytes: await impose(merged.bytes, 'a4_2up') }; mergedPages = Math.ceil(mergedPages / 2); }
+    else if (layout === 'A5 一页一版'){ merged = { bytes: await impose(merged.bytes, 'a5_1up') }; }
+
+    // Excel
+    const xlsx = buildXlsx(rows, total);
+
+    // 打包
+    const stamp = new Date();
+    const p2 = n => String(n).padStart(2, '0');
+    const ts = stamp.getFullYear() + p2(stamp.getMonth() + 1) + p2(stamp.getDate()) + '_' +
+      p2(stamp.getHours()) + p2(stamp.getMinutes());
+    const zipName = '报销材料_' + ts + '.zip';
+    const zip = fflate.zipSync({
+      [REPORT_NAME]: reportBytes instanceof Uint8Array ? reportBytes : new Uint8Array(reportBytes),
+      [EXCEL_NAME]: xlsx,
+      [MERGED_NAME]: merged.bytes,
+    }, { level: 6 });
+
+    download(zip, zipName, 'application/zip');
+
+    const s = { pages: mergedPages, count: rows.length, items, total };
+    $('res').classList.add('show');
+    $('resbox').innerHTML =
+      '已生成，共 ' + s.pages + ' 页、' + s.count + ' 张发票。<br>' +
+      '<div class="chips">' + s.items.map(it =>
+        '<span class="chip">' + esc(it[0]) + '<b>' + fmt(it[1]) + '</b></span>').join('') + '</div>' +
+      '<div style="margin-top:10px">合计 <b>¥ ' + fmt(s.total) + '</b>　<span style="color:#6b7484">' +
+      rmbUpper(s.total) + '</span></div>' +
+      '<div style="margin-top:12px"><a href="#" onclick="return false">↓ 已开始下载 ' + esc(zipName) +
+      '</a>　<span style="color:#6b7484;font-size:12.5px">（含报销单 / Excel 明细 / 合并 PDF）</span></div>';
+  } catch (e){
+    $('res').classList.add('show');
+    $('resbox').innerHTML = '<span style="color:#d93025">' + esc(e.message || e) + '</span>';
+    console.error(e);
+  }
+  btn.disabled = false;
+  btn.textContent = '生成报销材料';
+}
+
+/* ============================================================
+   七、自检（?selftest=1，供开发验证用，正常使用不会触发）
+   ============================================================ */
+async function runSelfTest(){
+  const out = { records: [], artifacts: {}, logs: [] };
+  const log = m => { out.logs.push(m); };
+  try {
+    const files = (await (await fetch('_test/list.json')).json()).files;
+    for (const name of files){
+      const blob = await (await fetch('_test/' + encodeURIComponent(name))).blob();
+      const f = new File([blob], name, { type: 'application/pdf' });
+      try {
+        const r = await parseInvoice(f);
+        out.records.push({ date: r.date, no: r.no, subject: r.subject, total: r.total,
+          rows: r.rows, name: r.name2, pages: r.pages });
+        RECORDS.push(r);
+      } catch (e){ log('解析失败 ' + name + ': ' + e.message); }
+    }
+    log('解析完成 ' + out.records.length + ' 张');
+
+    const rows = sortRecords(RECORDS);
+    const items = buildItems(rows, '支付');
+    const total = Math.round(items.reduce((s, x) => s + x[1], 0) * 100) / 100;
+
+    for (const layout of ['原始尺寸', 'A4 一页两版', 'A5 一页一版']){
+      let auto = 1;
+      rows.forEach(r => { auto += r.pages || 1; });
+      const pages = layout === 'A4 一页两版' ? Math.ceil(auto / 2) : auto;
+      const reportBytes = await buildReportPdf(items, total, {
+        dept: '广州分公司', date: '2026-11-17', pages, borrow: '5000',
+        refund: '0', handler: '张三', receiver: '李四',
+      });
+      let merged = await mergeAll(reportBytes, rows, []);
+      if (layout === 'A4 一页两版') merged = { bytes: await impose(merged.bytes, 'a4_2up') };
+      if (layout === 'A5 一页一版') merged = { bytes: await impose(merged.bytes, 'a5_1up') };
+      out.artifacts['report_' + layout] = { b64: b64(reportBytes), size: reportBytes.length };
+      out.artifacts['merged_' + layout] = { b64: b64(merged.bytes), size: merged.bytes.length };
+      log(layout + ' 报销单 ' + reportBytes.length + 'B 合并 ' + merged.bytes.length + 'B');
+    }
+    const xlsx = buildXlsx(rows, total);
+    out.artifacts['excel'] = { b64: b64(xlsx), size: xlsx.length };
+    out.summary = { total, items, count: rows.length };
+    out.ok = true;
+  } catch (e){
+    out.ok = false; out.err = e.message + '\n' + (e.stack || '');
+  }
+  const pre = document.createElement('pre');
+  pre.id = 'selftest';
+  pre.textContent = JSON.stringify(out);
+  document.body.appendChild(pre);
+}
+
+function b64(u8){
+  let s = '';
+  const CH = 0x8000;
+  for (let i = 0; i < u8.length; i += CH) s += String.fromCharCode.apply(null, u8.subarray(i, i + CH));
+  return btoa(s);
+}
+
+if (location.search.indexOf('selftest') >= 0){
+  window.addEventListener('load', () => setTimeout(runSelfTest, 100));
+}
+</script>
+</body>
+</html>
